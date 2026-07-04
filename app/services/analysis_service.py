@@ -87,8 +87,11 @@ def analyse_article(title: str, description: str | None, content: str | None) ->
     except APIConnectionError as exc:
         raise AnalysisError("Analysis failed -- please try again") from exc
 
-    result = json.loads(cast(str, response.choices[0].message.content))
-    return {"summary": result["summary"], "sentiment": result["sentiment"]}
+    try:
+        result = json.loads(cast(str, response.choices[0].message.content))
+        return {"summary": result["summary"], "sentiment": result["sentiment"]}
+    except (TypeError, ValueError, KeyError) as exc:
+        raise AnalysisError("Analysis failed -- please try again") from exc
 
 
 def analyse_and_store(db: Session, request_data: dict) -> Article:
