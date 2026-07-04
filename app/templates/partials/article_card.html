@@ -1,13 +1,13 @@
 {# Reusable article card, included from both search_results.html and results.html.
   
    Context:
-     article (dict or Article -- either an unanalysed gnews-shaped dict with sentiment/
+     article (dict | Article -- either an unanalysed gnews-shaped dict with sentiment/
        summary unset, or an analysed row with them set),
      results_page (bool, suppresses the "View in results" link when already on that page).
      
     Branches on article.sentiment truthiness to pick which of those two states to render.
 #}
-<div class="card" id="article-{{ article.id or loop.index }}">
+<div class="card" id="article-{{ article.id or article_index }}">
   {% if article.image_url %}
     <img class="card-image" src="{{ article.image_url }}" alt="{{ article.title }}">
   {% else %}

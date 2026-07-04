@@ -11,6 +11,7 @@
 {% if articles %}
   <div id="results">
     {% for article in articles %}
+      {% set article_index = loop.index %}
       {% include "partials/article_card.html" %}
     {% endfor %}
   </div>
