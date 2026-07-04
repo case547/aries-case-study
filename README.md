@@ -1,66 +1,105 @@
-# aries engineering case study
+# Aries Engineering Case Study 
 
-estimated duration: 1–3 hours
+For the case study brief, see brief.md
 
-tech stack: any js/ts/ruby/python stack + postgresql/mysql/mongodb
+---
 
-objective: build a simple web app that fetches real-time news articles, uses AI
-to generate a summary and sentiment analysis, and stores the results in a db
+## Walkthrough
 
-AI: using AI coding tools is encouraged. however, the next step will be a no-AI
-live coding session in this codebase. keep this in mind when choosing the tech
-stack
+A user searches for a news topic; the app queries gnews.io and shows the matching articles
+as cards (image, title, source, date, description). Clicking **Analyse** on a card sends it
+to OpenAI (`gpt-4.1-nano`) for a short summary and a positive/neutral/negative sentiment
+label, in a single structured-output call. The result is stored in Postgres and the card
+updates in place to show the summary and a colour-coded sentiment badge, with no page
+reload. A separate **Results** page lists everything that's ever been analysed, newest
+first.
 
-## overview
+Searching again for a topic you've already analysed an article from shows that article's
+existing summary/sentiment immediately instead of a bare "Analyse" button -- articles are
+deduplicated by URL, so the same article is never sent to OpenAI twice.
 
-you are tasked with building a web app that allows users to:
+Errors from either external API (rate limits, quota, outages) surface as a small inline
+message rather than a crash -- the "Analyse" button stays clickable so the user can just
+retry.
 
-1. search for recent news articles using a public API
-2. select an article and trigger:
-    - a summary using openai API
-    - a sentiment score (i.e. positive/neutral/negative)
-3. store the results in a db
-4. display all results and their analysis to the user
+## Architecture overview
 
-how the user selects, requests or does not select an article is up to you to
-design. but the app should be useful and not arbitrary
+One FastAPI app exposes the same functionality two ways from the same service layer:
 
-## what to focus on
+```
+app/
+  main.py              FastAPI() app: mounts static files, includes both routers
+  config.py            Loads DATABASE_URL / GNEWS_API_KEY / OPENAI_API_KEY from .env
+  db.py                SQLAlchemy engine, session, init_db()
+  base.py              The SQLAlchemy declarative Base (its own module to avoid a
+                       db.py <-> models/article.py import cycle)
+  models/
+    article.py           The Article table (one table: analysed articles)
+    schemas.py            Pydantic request/response shapes for the REST API
+  services/
+    news_service.py        Calls gnews.io, maps its response, maps its errors
+    analysis_service.py     Calls OpenAI, maps its errors, dedup-gates the call
+    article_repository.py   All DB reads/writes, including URL-based dedup
+  routers/
+    api.py                JSON REST API  (/api/search, /api/articles/analyse, /api/results, ...)
+    pages.py               HTML/HTMX UI  (/, /search-results, /articles/analyse, /results)
+  templates/, static/    Jinja2 templates + CSS for the HTML UI
+```
 
-- product design and UX
-- REST API design
-- AI features
+- **`routers/api.py`** and **`routers/pages.py`** call the *exact same* functions in
+  `services/` -- the JSON API isn't a decorative layer next to the UI, it's the same
+  business logic serialised as JSON instead of rendered as HTML fragments for HTMX to
+  swap into the page.
+- **Dedup is defense-in-depth**: `analysis_service.analyse_and_store` checks for an
+  existing row by URL *before* calling OpenAI (saves the API call in the common case),
+  and `article_repository.insert_article` also relies on the DB's `url` unique constraint
+  to safely handle the rare case of two requests analysing the same new article at once.
+- **No Alembic**: a single table with `Base.metadata.create_all()` on startup
+  was enough for this scope; plain SQLAlchemy + separate Pydantic schemas were chosen,
+  although SQLModel could also have been viable.
+- **One automated test**: `tests/test_article_repository.py` covers the dedup behaviour,
+  since a bug there is the one thing that would silently waste OpenAI/gnews.io quota.
+  Everything else was verified manually against the real APIs during development.
 
-## APIs you'll use
+## Local development
 
-1. news API
-    
-    i.e. https://gnews.io (free tier: 100 requests/day) (or any news/RSS feed you care about)
+Prerequisites: `uv`, Docker (for local Postgres).
 
-2. openai API
+### Starting up
 
-    you will be provided with an openai API key with access to gpt-4.1-nano . you
-    won’t be judged on model selection or generation quality
+```bash
+uv sync
+cp .env.example .env   # fill in GNEWS_API_KEY and OPENAI_API_KEY
+docker compose up -d   # starts local Postgres on port 5432
+uv run fastapi dev app/main.py
+```
 
-## infrastructure
+Visit `http://localhost:8000`.
 
-please host the app anywhere you want. here’re some great free options:
+### Tearing down
 
-- https://vercel.com
-- https://railway.com
-- https://render.com
+Stop the dev server with `Ctrl+C`, then:
 
-no need to worry about it being accessible to everyone
+```bash
+docker compose down      # stops and removes the Postgres container; data is kept
+docker compose down -v   # add -v to also delete the data volume for a clean slate
+```
 
-## handover
+## Running tests
 
-once you have completed the task, please reply with the following:
+```bash
+uv run pytest
+```
 
-- github repo link. public or private.
-- live app link
-- optionally - a short walkthrough video
+## Deploying to Render
 
-## good luck!
-
-we're excited to see how you approach the problem, balance architecture, and
-execute cleanly under a short time constraint
+1. Push this repo to GitHub.
+2. In Render, create a **new Web Service** from the repo:
+   - Build command: `uv sync`
+   - Start command: `uv run fastapi run app/main.py --port $PORT`
+3. In Render, create a **new PostgreSQL** instance (free tier).
+4. On the web service, set environment variables:
+   - `DATABASE_URL` -- the connection string from the Render Postgres instance
+   - `GNEWS_API_KEY`
+   - `OPENAI_API_KEY`
+5. Deploy. Note: Render's free web service spins down after 15 minutes of inactivity -- the first request after idle takes about a minute to wake back up. The free Postgres instance expires 30 days after creation (plus a 14-day grace period before deletion).
