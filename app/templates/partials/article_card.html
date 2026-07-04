@@ -1,0 +1,46 @@
+{# Reusable article card, included from both search_results.html and results.html.
+  
+   Context:
+     article (dict or Article -- either an unanalysed gnews-shaped dict with sentiment/
+       summary unset, or an analysed row with them set),
+     results_page (bool, suppresses the "View in results" link when already on that page).
+     
+    Branches on article.sentiment truthiness to pick which of those two states to render.
+#}
+<div class="card" id="article-{{ article.id or loop.index }}">
+  {% if article.image_url %}
+    <img class="card-image" src="{{ article.image_url }}" alt="{{ article.title }}">
+  {% else %}
+    <div class="card-image card-image-placeholder"></div>
+  {% endif %}
+  <div class="card-body">
+    <h3 class="card-title">{{ article.title }}</h3>
+    <p class="card-meta">{{ article.source_name }} &middot; {{ article.published_at.strftime("%b %d, %Y") }}</p>
+    <p class="card-description">{{ article.description }}</p>
+
+    {% if article.sentiment %}
+      <p class="card-summary">{{ article.summary }}</p>
+      <span class="badge badge-{{ article.sentiment }}">{{ article.sentiment }}</span>
+      {% if not results_page %}
+        <a class="card-link" href="/results#article-{{ article.id }}">View in results &rarr;</a>
+      {% endif %}
+    {% else %}
+      <!-- POSTs to /articles/analyse; response (this same partial, now analysed) replaces
+           whole card div in place (outerHTML, not inner) -- "closest .card" targets this
+           specific card since many can be on the page at once, each with its own form. -->
+      <form hx-post="/articles/analyse" hx-target="closest .card" hx-swap="outerHTML">
+        <input type="hidden" name="url" value="{{ article.url }}">
+        <input type="hidden" name="title" value="{{ article.title }}">
+        <input type="hidden" name="description" value="{{ article.description or '' }}">
+        <input type="hidden" name="content" value="{{ article.content or '' }}">
+        <input type="hidden" name="image_url" value="{{ article.image_url or '' }}">
+        <input type="hidden" name="source_name" value="{{ article.source_name }}">
+        <input type="hidden" name="published_at" value="{{ article.published_at.isoformat() }}">
+        <button type="submit" class="analyse-button">Analyse</button>
+      </form>
+      {% if article.error %}
+        <p class="card-error">{{ article.error }}</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

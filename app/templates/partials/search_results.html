@@ -1,0 +1,17 @@
+{# HTML fragment returned by GET /search-results (pages.search_results), swapped into
+   search.html's #results div via HTMX.
+   
+   Context:
+     error (str|None),
+     articles (list[dict], gnews results enriched with analysis state),
+     query (str, for the empty-state message).
+#}
+{% if error %}
+  <p class="error-banner">{{ error }}</p>
+{% elif articles %}
+  {% for article in articles %}
+    {% include "partials/article_card.html" %}
+  {% endfor %}
+{% else %}
+  <p class="empty-state">No articles found for "{{ query }}".</p>
+{% endif %}
