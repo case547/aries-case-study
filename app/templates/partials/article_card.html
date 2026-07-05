@@ -4,10 +4,19 @@
      article (dict | Article -- either an unanalysed gnews-shaped dict with sentiment/
        summary unset, or an analysed row with them set),
      results_page (bool, suppresses the "View in results" link when already on that page).
-     
+     article_index (int, set by the caller before {% include %} since Jinja doesn't
+       propagate `loop` into includes -- used as a fallback in the card's DOM id
+       for unanalysed articles, which have no id yet).
+
     Branches on article.sentiment truthiness to pick which of those two states to render.
+    An analysed sentiment renders as an ink-stamped badge (.badge) -- the AI's verdict --
+    and reveals the dispatch-number tag (.card-dispatch, always article.id since only
+    persisted articles reach this branch), on either page.
 #}
 <div class="card" id="article-{{ article.id or article_index }}">
+  {% if article.sentiment %}
+    <span class="card-dispatch">No. {{ "%03d"|format(article.id) }}</span>
+  {% endif %}
   {% if article.image_url %}
     <img class="card-image" src="{{ article.image_url }}" alt="{{ article.title }}">
   {% else %}
