@@ -2,14 +2,15 @@
    search.html's #results div via HTMX.
    
    Context:
-     error (str|None),
      articles (list[dict], gnews results enriched with analysis state),
      query (str, for the empty-state message).
+     error (str | None),
 #}
 {% if error %}
   <p class="error-banner">{{ error }}</p>
 {% elif articles %}
   {% for article in articles %}
+    {% set article_index = loop.index %}
     {% include "partials/article_card.html" %}
   {% endfor %}
 {% else %}
