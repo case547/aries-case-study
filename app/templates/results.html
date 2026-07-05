@@ -1,0 +1,20 @@
+{# Results page (GET /results, pages.results_page).
+  
+   Context:
+     articles (list[Article], all analysed rows, newest first).
+       Reuses article_card.html, always in its "analysed" branch since everything
+       here has a sentiment/summary already.
+#}
+{% extends "base.html" %}
+{% block content %}
+<h1>Results</h1>
+{% if articles %}
+  <div id="results">
+    {% for article in articles %}
+      {% include "partials/article_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="empty-state">No articles analysed yet — go search for something.</p>
+{% endif %}
+{% endblock %}

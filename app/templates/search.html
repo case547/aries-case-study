@@ -1,0 +1,16 @@
+{# Search page (GET /, pages.search_page). Renders with no context -- results are
+   fetched afterward via HTMX into #results, not server-rendered on initial load. #}
+{% extends "base.html" %}
+{% block content %}
+<h1>Search News</h1>
+<!-- On submit, HTMX GETs /search-results in the background (no page reload) and
+     swaps the response into #results below, showing #search-spinner meanwhile. -->
+<form hx-get="/search-results" hx-target="#results" hx-swap="innerHTML" hx-indicator="#search-spinner">
+  <input type="text" name="q" placeholder="Search for a topic..." required>
+  <button type="submit">Search</button>
+  <span id="search-spinner" class="htmx-indicator">Searching...</span>
+</form>
+<div id="results">
+  <p class="empty-state">Search for a topic to get started.</p>
+</div>
+{% endblock %}
