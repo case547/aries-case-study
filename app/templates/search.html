@@ -2,7 +2,8 @@
    fetched afterward via HTMX into #results, not server-rendered on initial load. #}
 {% extends "base.html" %}
 {% block content %}
-<h1>Search News</h1>
+<p class="hero-kicker">Dispatch query</p>
+<h1 class="hero-heading">What's the story?</h1>
 <!-- On submit, HTMX GETs /search-results in the background (no page reload) and
      swaps the response into #results below, showing #search-spinner meanwhile. -->
 <form hx-get="/search-results" hx-target="#results" hx-swap="innerHTML" hx-indicator="#search-spinner">
