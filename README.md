@@ -22,6 +22,12 @@ Errors from either external API (rate limits, quota, outages) surface as a small
 message rather than a crash -- the "Analyse" button stays clickable so the user can just
 retry.
 
+## Render Deployment
+
+https://aries-case-study.onrender.com/
+
+Note: Render's free web service spins down after 15 minutes of inactivity -- the first request after idle takes about a minute to wake back up. The free Postgres instance expires 30 days after creation (plus a 14-day grace period before deletion).
+
 ## Architecture overview
 
 One FastAPI app exposes the same functionality two ways from the same service layer:
@@ -90,16 +96,3 @@ docker compose down -v   # add -v to also delete the data volume for a clean sla
 ```bash
 uv run pytest
 ```
-
-## Deploying to Render
-
-1. Push this repo to GitHub.
-2. In Render, create a **new Web Service** from the repo:
-   - Build command: `uv sync`
-   - Start command: `uv run fastapi run app/main.py --port $PORT`
-3. In Render, create a **new PostgreSQL** instance (free tier).
-4. On the web service, set environment variables:
-   - `DATABASE_URL` -- the connection string from the Render Postgres instance
-   - `GNEWS_API_KEY`
-   - `OPENAI_API_KEY`
-5. Deploy. Note: Render's free web service spins down after 15 minutes of inactivity -- the first request after idle takes about a minute to wake back up. The free Postgres instance expires 30 days after creation (plus a 14-day grace period before deletion).
