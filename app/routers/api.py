@@ -15,6 +15,13 @@ from app.services import article_repository
 from app.services.analysis_service import AnalysisError, analyse_and_store
 from app.services.news_service import NewsAPIError, search_articles
 
+
+def _upstream_status(exc: NewsAPIError | AnalysisError) -> int:
+    if exc.status_code in (400, 429):
+        return exc.status_code
+    return 502
+
+
 router = APIRouter(prefix="/api")
 
 
@@ -27,7 +34,7 @@ async def search(q: str, db: Session = Depends(get_db)) -> list[dict]:
     try:
         raw_articles = await search_articles(q)
     except NewsAPIError as exc:
-        raise HTTPException(status_code=502, detail=exc.message) from exc
+        raise HTTPException(status_code=_upstream_status(exc), detail=exc.message) from exc
 
     return article_repository.enrich_with_analysis_state(db, raw_articles)
 
@@ -43,7 +50,7 @@ def analyse(request: AnalyseRequest, db: Session = Depends(get_db)) -> Article:
     try:
         return analyse_and_store(db, request.model_dump())
     except AnalysisError as exc:
-        raise HTTPException(status_code=502, detail=exc.message) from exc
+        raise HTTPException(status_code=_upstream_status(exc), detail=exc.message) from exc
 
 
 @router.get("/results", response_model=list[ArticleOut])
